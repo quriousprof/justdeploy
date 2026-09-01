@@ -7,7 +7,7 @@ license = "MIT"
 categories = ["development-tools"]
 repository = "https://github.com/quriousprof/justdeploy"
 edition = "2024"
-readme = "README.md"
+readme = "../README.md"
 
 [dependencies]
 crossterm = "0.29.0"
