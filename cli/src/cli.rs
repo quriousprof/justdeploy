@@ -1,15 +1,24 @@
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-
-use clap::Parser;
 
 /// JustDeploy — Deployments made easy
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    /// Path to a Dockerfile or docker-compose.yml
-    #[arg(short, long)]
-    pub file: PathBuf,
+    #[command(subcommand)]
+    pub command: Commands,
+}
 
-    /// Deployment name (auto-generated if omitted)
-    pub name: Option<String>,
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Initialize a new JustDeploy configuration (jd.json)
+    Setup,
+    /// Build the deployment from a Dockerfile or docker-compose file
+    Build {
+        /// Deployment name (auto-generated if omitted)
+        name: Option<String>,
+        /// Path to a Dockerfile or docker-compose.yml
+        #[arg(short, long)]
+        file: PathBuf,
+    },
 }
