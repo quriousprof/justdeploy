@@ -1,5 +1,6 @@
 pub mod app;
 pub mod cli;
+pub mod commands;
 pub mod core;
 pub mod event;
 pub mod tui;
@@ -10,7 +11,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::{
-    cli::Cli,
+    cli::{Cli, Commands},
     core::{
         models::deployment::{Deployment, ServerType},
         runner,
@@ -20,10 +21,15 @@ use crate::{
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let name = cli.name.unwrap_or_else(generate_deployment_name);
 
-    let deployment = Deployment::new(name, cli.file, String::new(), ServerType::Local)?;
-    runner::build(&deployment)?;
+    match cli.command {
+        Commands::Setup => commands::setup::run()?,
+        Commands::Build { name, file } => {
+            let name = name.unwrap_or_else(generate_deployment_name);
+            let deployment = Deployment::new(name, file, String::new(), ServerType::Local)?;
+            runner::build(&deployment)?;
+        }
+    }
 
     Ok(())
 }
