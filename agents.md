@@ -20,20 +20,55 @@ justdeploy lets you deploy projects to remote servers without leaving the termin
 
 ```
 justdeploy/
-├── cli/                  # Rust CLI application
+├── cli/                        # Rust CLI application
 │   ├── Cargo.toml
 │   └── src/
-│       └── main.rs
-└── agents.md             # This file
+│       ├── main.rs             # Entry point — wires CLI → Deployment → runner
+│       ├── cli.rs              # Clap argument struct (Cli)
+│       ├── app.rs              # TUI application state (App)
+│       ├── tui.rs              # Terminal lifecycle (enter/exit/draw)
+│       ├── event.rs            # Crossterm event handler (threaded, MPSC)
+│       ├── update.rs           # Key-event → App state dispatcher
+│       ├── utils.rs            # Shared utilities (e.g. generate_deployment_name)
+│       ├── runner.rs           # Build execution (docker build / docker compose)
+│       ├── models/
+│       │   ├── mod.rs
+│       │   └── deployment.rs   # Deployment struct, enums, parse_file()
+│       └── ui/
+│           ├── mod.rs
+│           └── render.rs       # Ratatui render function
+└── agents.md                   # This file
 ```
+
+## Module responsibilities
+
+| Module | Responsibility |
+|---|---|
+| `cli.rs` | CLI argument definitions via Clap |
+| `models/deployment.rs` | `Deployment` data model, `DeploymentType`/`ServerType`/`DeploymentStatus` enums, `parse_file()` |
+| `runner.rs` | Executes the actual build (currently: `docker build`; stub for docker-compose) |
+| `utils.rs` | Stateless helpers (random name generation) |
+| `app.rs` | TUI `App` state struct |
+| `tui.rs` | Terminal setup/teardown and draw loop |
+| `event.rs` | Threaded crossterm event polling over MPSC channel |
+| `update.rs` | Maps key events to `App` state mutations |
+| `ui/render.rs` | Ratatui frame rendering |
 
 ## Key concepts
 
 - **`jd.json`** — per-project config file that lives in the project directory. Defines how the project should be built and deployed.
-- **Dockerfile support** — projects can alternatively provide a Dockerfile instead of a `jd.json` for containerized deployments.
+- **Dockerfile support** — projects can alternatively provide a Dockerfile instead of `jd.json` for containerised deployments.
 - **Server management** — users register remote servers (IP + password or SSH key) that justdeploy can deploy to.
 - **SSH-based deployment** — deployments happen over SSH to the registered servers.
 
+## Error handling
+
+All fallible operations use `color_eyre::eyre::Result`. `Deployment::new()` returns `Result<Self>` so file-parsing errors propagate cleanly to `main`. `runner::build()` returns `Result<()>` and checks the docker process exit code.
+
 ## Status
 
-Early stage — scaffolding only. The CLI binary exists but core functionality is not yet implemented.
+Early stage. Implemented so far:
+- CLI argument parsing (`--file`, optional `name`)
+- File-type detection (`Dockerfile` / docker-compose YAML)
+- `docker build` execution with inherited stdio and exit-code checking
+- TUI infrastructure (terminal lifecycle, event loop, render skeleton) — ready but not yet wired into the main flow

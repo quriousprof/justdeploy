@@ -1,6 +1,6 @@
 use std::{io, panic};
 
-use color_eyre::eyre::Result;
+use anyhow::Result;
 use crossterm::{event::{DisableMouseCapture, EnableMouseCapture}, execute, terminal::{self, EnterAlternateScreen, LeaveAlternateScreen}};
 use ratatui::{Terminal, backend::CrosstermBackend};
 

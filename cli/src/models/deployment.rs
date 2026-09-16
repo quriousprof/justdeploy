@@ -1,23 +1,19 @@
-use std::{io::{BufRead, BufReader}, path::PathBuf, process::{Command, Stdio}};
+use std::path::PathBuf;
 
-use anyhow::{Result, bail};
 use chrono::{DateTime, Utc};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::parse_file;
-
-/// Deployment Representation
-///
-/// This struct contains all the information about a deployment
+/// Represents a single deployment configuration
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {
-    name: String,
-    file_path: PathBuf,
-    config_location: String,
-    deployment_type: DeploymentType,
-    server: ServerType,
-    deployed_at: DateTime<Utc>,
-    status: DeploymentStatus,
+    pub(crate) name: String,
+    pub(crate) file_path: PathBuf,
+    pub(crate) config_location: String,
+    pub(crate) deployment_type: DeploymentType,
+    pub(crate) server: ServerType,
+    pub(crate) deployed_at: DateTime<Utc>,
+    pub(crate) status: DeploymentStatus,
 }
 
 impl Deployment {
@@ -26,83 +22,79 @@ impl Deployment {
         file_path: PathBuf,
         config_location: String,
         server: ServerType,
-    ) -> Self {
-        
-        // checking file contents
-        let deployment_type: DeploymentType = parse_file(&file_path).expect("failed");
-
-        Self {
+    ) -> Result<Self> {
+        let deployment_type = parse_file(&file_path)?;
+        Ok(Self {
             name,
-            file_path: file_path,
+            file_path,
             config_location,
             deployment_type,
             server,
             deployed_at: Utc::now(),
             status: DeploymentStatus::Idle,
-        }
+        })
+    }
+}
+
+/// Determine the [`DeploymentType`] from a file path
+pub fn parse_file(file_path: &PathBuf) -> Result<DeploymentType> {
+    if !file_path.exists() {
+        bail!("File '{}' does not exist", file_path.display());
     }
 
-    pub fn build(self) {
-        println!("Building {}...", self.name);
-        
-        // building according to the deployment type
-        match self.deployment_type {
-            DeploymentType::Dockerfile => {
-                // bulding the docker file 
-                let mut build_cmd = Command::new("docker");
-                build_cmd.arg("build");
-                if !self.name.is_empty() {
-                    build_cmd.args(["-t", self.name.as_str()]);
-                }
-                build_cmd.args(["-f", self.file_path.to_str().unwrap()]);
-                build_cmd.arg(self.file_path.parent().unwrap().to_str().unwrap());
+    match file_path.extension() {
+        Some(ext) if ext == "yml" || ext == "yaml" => {
+            let filename = file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .context("Filename contains invalid UTF-8")?;
 
-                // TODO: Add error handling for output
-                let mut final_cmd = build_cmd.stdout(Stdio::piped()).spawn().unwrap();
+            if filename.contains("compose") {
+                Ok(DeploymentType::DockerCompose)
+            } else {
+                bail!(
+                    "YAML file '{}' is not a docker-compose file (filename must contain 'compose')",
+                    filename
+                )
+            }
+        }
+        Some(ext) => bail!(
+            "Unsupported file extension '.{}': only Dockerfiles and docker-compose YAML files are supported",
+            ext.to_string_lossy()
+        ),
+        None => {
+            let filename = file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .context("Filename contains invalid UTF-8")?;
 
-                {
-                    let stdout = final_cmd.stdout.as_mut().unwrap();
-                    let stdout_lines = BufReader::new(stdout).lines();
-
-                    for line in stdout_lines {
-                        println!("[STDOUT] {:?}", line);
-                    }
-                }
-
-                // TODO: handle exit codes
-                final_cmd.wait().unwrap();
-
-                println!("CMD: {:?}", &build_cmd);
-                
-                println!("Dockerfile built successfully!");
-            } 
-            DeploymentType::DockerCompose => todo!(),
+            if filename == "Dockerfile" {
+                Ok(DeploymentType::Dockerfile)
+            } else {
+                bail!(
+                    "File '{}' is not a valid Dockerfile (expected filename 'Dockerfile')",
+                    filename
+                )
+            }
         }
     }
-
 }
 
 /// Type of deployment
-///
-/// Can be Dockerfile, DockerCompose (more yet to come)
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DeploymentType {
     Dockerfile,
     DockerCompose,
 }
 
-/// Server Type
-///
-/// Can be Local / Remote (ipv6)
+/// Target server for deployment
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerType {
     Local,
     Remote(String),
 }
 
-/// Status of deployment
-///
-/// This is handled internally to keep a track of the deployment
+/// Lifecycle status of a deployment
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DeploymentStatus {
     Idle,
