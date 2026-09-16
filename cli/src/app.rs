@@ -1,3 +1,4 @@
+/// Central Dispatcher
 #[derive(Debug, Default)]
 pub struct App {
     pub exit: bool,
