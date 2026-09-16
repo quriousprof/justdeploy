@@ -1,21 +1,21 @@
 pub mod app;
 pub mod cli;
+pub mod core;
 pub mod event;
-pub mod logger;
-pub mod models;
-pub mod runner;
 pub mod tui;
 pub mod ui;
 pub mod update;
-pub mod utils;
 
 use anyhow::Result;
 use clap::Parser;
 
 use crate::{
     cli::Cli,
-    models::deployment::{Deployment, ServerType},
-    utils::generate_deployment_name,
+    core::{
+        models::deployment::{Deployment, ServerType},
+        runner,
+        utils::generate_deployment_name,
+    },
 };
 
 fn main() -> Result<()> {

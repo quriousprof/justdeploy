@@ -2,7 +2,7 @@ use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result, bail};
 
-use crate::{logger, models::deployment::{Deployment, DeploymentType}};
+use super::{logger, models::deployment::{Deployment, DeploymentType}};
 
 /// Execute the build step for a deployment
 pub fn build(deployment: &Deployment) -> Result<()> {
