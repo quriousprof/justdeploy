@@ -2,14 +2,11 @@ use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result, bail};
 
-use crate::models::deployment::{Deployment, DeploymentType};
+use crate::{logger, models::deployment::{Deployment, DeploymentType}};
 
 /// Execute the build step for a deployment
 pub fn build(deployment: &Deployment) -> Result<()> {
-    println!(
-        "[justdeploy] Building '{}' ({:?})...",
-        deployment.name, deployment.deployment_type
-    );
+    logger::info(&format!("Building '{}'...", deployment.name));
 
     match &deployment.deployment_type {
         DeploymentType::Dockerfile => build_dockerfile(deployment),
@@ -56,10 +53,10 @@ fn build_dockerfile(deployment: &Deployment) -> Result<()> {
         );
     }
 
-    println!("[justdeploy] '{}' built successfully!", deployment.name);
+    logger::success(&format!("'{}' built successfully!", deployment.name));
     Ok(())
 }
 
 fn build_compose(_deployment: &Deployment) -> Result<()> {
-    bail!("Docker Compose support is not yet implemented")
+    bail!("docker compose support is not yet implemented")
 }
