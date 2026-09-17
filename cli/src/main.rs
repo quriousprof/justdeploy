@@ -1,5 +1,6 @@
 pub mod app;
 pub mod cli;
+pub mod commands;
 pub mod core;
 pub mod event;
 pub mod tui;
@@ -10,20 +11,38 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::{
-    cli::Cli,
+    cli::{Cli, Commands},
     core::{
-        models::deployment::{Deployment, ServerType},
+        models::{
+            config::JdConfig,
+            deployment::{Deployment, ServerType},
+        },
+        registry::Registry,
         runner,
-        utils::generate_deployment_name,
     },
 };
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let name = cli.name.unwrap_or_else(generate_deployment_name);
 
-    let deployment = Deployment::new(name, cli.file, String::new(), ServerType::Local)?;
-    runner::build(&deployment)?;
+    match cli.command {
+        Commands::Setup => commands::setup::run()?,
+        Commands::List => commands::list::run()?,
+        Commands::Build => {
+            let config_path = std::env::current_dir()?.join("jd.json");
+            let config = JdConfig::load()?;
+            let deployment = Deployment::new(
+                config.name,
+                config.file_path,
+                String::new(),
+                ServerType::Local,
+            )?;
+            runner::build(&deployment)?;
+            let mut registry = Registry::load()?;
+            registry.mark_built(&config_path);
+            registry.save()?;
+        }
+    }
 
     Ok(())
 }

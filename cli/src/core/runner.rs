@@ -57,6 +57,28 @@ fn build_dockerfile(deployment: &Deployment) -> Result<()> {
     Ok(())
 }
 
-fn build_compose(_deployment: &Deployment) -> Result<()> {
-    bail!("docker compose support is not yet implemented")
+fn build_compose(deployment: &Deployment) -> Result<()> {
+    let file_str = deployment
+        .file_path
+        .to_str()
+        .context("Compose file path contains invalid UTF-8")?;
+
+    let status = Command::new("docker")
+        .args(["compose", "-f", file_str, "-p", &deployment.name, "build"])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker compose'. Is Docker installed and running?")?
+        .wait()
+        .context("Failed to wait for 'docker compose build' process")?;
+
+    if !status.success() {
+        bail!(
+            "docker compose build failed (exit code: {})",
+            status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
+        );
+    }
+
+    logger::success(&format!("'{}' built successfully!", deployment.name));
+    Ok(())
 }
