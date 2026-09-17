@@ -14,4 +14,6 @@ pub enum Commands {
     Setup,
     /// Build the deployment using the project's jd.json config
     Build,
+    /// List all registered deployments
+    List,
 }
