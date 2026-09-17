@@ -72,9 +72,7 @@ pub fn deploy(deployment: &Deployment) -> Result<()> {
 }
 
 fn deploy_dockerfile(deployment: &Deployment) -> Result<()> {
-    build_dockerfile(deployment)?;
-
-    // Stop and remove existing container if running
+    // Remove any existing container (running or stopped) so docker run can reuse the name
     Command::new("docker")
         .args(["rm", "-f", &deployment.name])
         .stdout(Stdio::null())
@@ -110,7 +108,7 @@ fn deploy_compose(deployment: &Deployment) -> Result<()> {
 
     let mut child = Command::new("docker")
         .args([
-            "compose", "-f", file_str, "-p", &deployment.name, "up", "--build", "-d",
+            "compose", "-f", file_str, "-p", &deployment.name, "up", "-d",
         ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::piped())
@@ -168,17 +166,17 @@ pub fn stop(deployment: &Deployment) -> Result<()> {
 
 fn stop_dockerfile(deployment: &Deployment) -> Result<()> {
     let status = Command::new("docker")
-        .args(["rm", "-f", &deployment.name])
+        .args(["stop", &deployment.name])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
-        .context("Failed to spawn 'docker rm'")?
+        .context("Failed to spawn 'docker stop'")?
         .wait()
-        .context("Failed to wait for 'docker rm'")?;
+        .context("Failed to wait for 'docker stop'")?;
 
     if !status.success() {
         bail!(
-            "docker rm failed (exit code: {})",
+            "docker stop failed (exit code: {})",
             status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
         );
     }
