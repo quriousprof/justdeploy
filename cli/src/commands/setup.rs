@@ -54,6 +54,13 @@ pub fn run() -> Result<()> {
     let config_path = env::current_dir()
         .context("Failed to determine current directory")?
         .join("jd.json");
+
+    if config_path.exists() {
+        let backup = config_path.with_extension("json.old");
+        fs::rename(&config_path, &backup).context("Failed to back up existing jd.json")?;
+        logger::info(&format!("Previous config saved to '{}'", backup.display()));
+    }
+
     let json = serde_json::to_string_pretty(&config).context("Failed to serialize config")?;
     fs::write(&config_path, &json).context("Failed to write jd.json")?;
 
