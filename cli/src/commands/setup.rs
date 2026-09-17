@@ -49,7 +49,6 @@ pub fn run() -> Result<()> {
         deployment_type,
         file_path,
         server: ServerType::Local,
-        deployment_args: Default::default(),
     };
 
     let config_path = env::current_dir()
