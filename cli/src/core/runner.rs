@@ -1,4 +1,8 @@
-use std::process::{Command, Stdio};
+use std::{
+    io::{BufRead, BufReader},
+    process::{Command, Stdio},
+    thread,
+};
 
 use anyhow::{Context, Result, bail};
 
@@ -104,16 +108,42 @@ fn deploy_compose(deployment: &Deployment) -> Result<()> {
         .to_str()
         .context("Compose file path contains invalid UTF-8")?;
 
-    let status = Command::new("docker")
+    let mut child = Command::new("docker")
         .args([
             "compose", "-f", file_str, "-p", &deployment.name, "up", "--build", "-d",
         ])
         .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .spawn()
-        .context("Failed to spawn 'docker compose up'")?
+        .context("Failed to spawn 'docker compose up'")?;
+
+    // Read stderr in a thread so the pipe buffer never blocks the child.
+    // Capture the output to check for known errors while still printing it live.
+    let stderr = child.stderr.take().unwrap();
+    let stderr_thread = thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        let mut platform_mismatch = false;
+        for line in reader.lines().map_while(Result::ok) {
+            if line.contains("does not match the detected host platform") {
+                platform_mismatch = true;
+            }
+            eprintln!("{}", line);
+        }
+        platform_mismatch
+    });
+
+    let status = child
         .wait()
         .context("Failed to wait for 'docker compose up' process")?;
+
+    let platform_mismatch = stderr_thread.join().unwrap_or(false);
+
+    if platform_mismatch {
+        bail!(
+            "Platform mismatch: the image was built for a different architecture than this machine. \
+             Add `platform: linux/arm64` (or the correct platform) to your docker-compose service."
+        );
+    }
 
     if !status.success() {
         bail!(
