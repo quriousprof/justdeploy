@@ -15,6 +15,7 @@ use crate::core::{
 pub fn run(down: bool) -> Result<()> {
     let config_path = env::current_dir()?.join("jd.json");
     let config = JdConfig::load()?;
+    let deployment_args = config.deployment_args.clone();
 
     let deployment = Deployment::new(
         config.name,
@@ -27,7 +28,7 @@ pub fn run(down: bool) -> Result<()> {
         runner::stop(&deployment)?;
     } else {
         ensure_built(&config_path, &deployment)?;
-        runner::deploy(&deployment)?;
+        runner::deploy(&deployment, &deployment_args)?;
         let mut registry = Registry::load()?;
         registry.mark_deployed(&config_path);
         registry.save()?;

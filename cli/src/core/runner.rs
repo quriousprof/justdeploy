@@ -73,16 +73,16 @@ fn build_dockerfile(deployment: &Deployment) -> Result<()> {
 }
 
 /// Build and run the deployment in detached mode
-pub fn deploy(deployment: &Deployment) -> Result<()> {
+pub fn deploy(deployment: &Deployment, args: &[String]) -> Result<()> {
     logger::info(&format!("Deploying '{}'...", deployment.name));
 
     match &deployment.deployment_type {
-        DeploymentType::Dockerfile => deploy_dockerfile(deployment),
-        DeploymentType::DockerCompose => deploy_compose(deployment),
+        DeploymentType::Dockerfile => deploy_dockerfile(deployment, args),
+        DeploymentType::DockerCompose => deploy_compose(deployment, args),
     }
 }
 
-fn deploy_dockerfile(deployment: &Deployment) -> Result<()> {
+fn deploy_dockerfile(deployment: &Deployment, args: &[String]) -> Result<()> {
     // Remove any existing container (running or stopped) so docker run can reuse the name
     Command::new("docker")
         .args(["rm", "-f", &deployment.name])
@@ -91,10 +91,13 @@ fn deploy_dockerfile(deployment: &Deployment) -> Result<()> {
         .status()
         .ok();
 
-    let status = Command::new("docker")
-        .args(["run", "-d", "--name", &deployment.name, &deployment.name])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+    let mut cmd = Command::new("docker");
+    cmd.args(["run", "-d", "--name", &deployment.name]);
+    cmd.args(args);
+    cmd.arg(&deployment.name); // image name — must come last
+    cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+
+    let status = cmd
         .spawn()
         .context("Failed to spawn 'docker run'")?
         .wait()
@@ -111,16 +114,16 @@ fn deploy_dockerfile(deployment: &Deployment) -> Result<()> {
     Ok(())
 }
 
-fn deploy_compose(deployment: &Deployment) -> Result<()> {
+fn deploy_compose(deployment: &Deployment, args: &[String]) -> Result<()> {
     let file_str = deployment
         .file_path
         .to_str()
         .context("Compose file path contains invalid UTF-8")?;
 
-    let mut child = Command::new("docker")
-        .args([
-            "compose", "-f", file_str, "-p", &deployment.name, "up", "-d",
-        ])
+    let mut child = Command::new("docker");
+    child.args(["compose", "-f", file_str, "-p", &deployment.name, "up", "-d"]);
+    child.args(args);
+    let mut child = child
         .stdout(Stdio::inherit())
         .stderr(Stdio::piped())
         .spawn()
