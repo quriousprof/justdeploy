@@ -16,8 +16,11 @@ pub enum Commands {
     Build,
     /// Build and run the deployment on the local machine
     Deploy {
+        /// Start the deployment (default)
+        #[arg(long, conflicts_with = "down")]
+        up: bool,
         /// Stop and remove the running containers
-        #[arg(long)]
+        #[arg(long, conflicts_with = "up")]
         down: bool,
     },
     /// Stream logs for a deployment by name, or for the current directory's project

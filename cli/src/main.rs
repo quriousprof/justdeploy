@@ -27,7 +27,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Setup => commands::setup::run()?,
-        Commands::Deploy { down } => commands::deploy::run(down)?,
+        Commands::Deploy { down, .. } => commands::deploy::run(down)?,
         Commands::Logs { name } => commands::logs::run(name.as_deref())?,
         Commands::List => commands::list::run()?,
         Commands::Build => {
