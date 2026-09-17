@@ -8,6 +8,17 @@ use anyhow::{Context, Result, bail};
 
 use super::{logger, models::deployment::{Deployment, DeploymentType}};
 
+/// Check whether a Docker image with the given name exists locally
+pub fn image_exists(name: &str) -> bool {
+    Command::new("docker")
+        .args(["image", "inspect", name])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 /// Execute the build step for a deployment
 pub fn build(deployment: &Deployment) -> Result<()> {
     logger::info(&format!("Building '{}'...", deployment.name));
