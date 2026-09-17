@@ -12,6 +12,7 @@ use crate::core::{
         config::JdConfig,
         deployment::{parse_file, ServerType},
     },
+    registry::Registry,
     utils::generate_deployment_name,
 };
 
@@ -50,9 +51,15 @@ pub fn run() -> Result<()> {
         server: ServerType::Local,
     };
 
-    let config_path = PathBuf::from("jd.json");
+    let config_path = env::current_dir()
+        .context("Failed to determine current directory")?
+        .join("jd.json");
     let json = serde_json::to_string_pretty(&config).context("Failed to serialize config")?;
     fs::write(&config_path, &json).context("Failed to write jd.json")?;
+
+    let mut registry = Registry::load()?;
+    registry.upsert(config_path.clone());
+    registry.save()?;
 
     println!();
     logger::success(&format!("Config saved to '{}'", config_path.display()));
