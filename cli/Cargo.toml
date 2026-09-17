@@ -9,6 +9,10 @@ repository = "https://github.com/quriousprof/justdeploy"
 edition = "2024"
 readme = "../README.md"
 
+[[bin]]
+name = "jd"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0"
 colored = "2"
