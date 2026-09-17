@@ -17,6 +17,7 @@ use crate::{
             config::JdConfig,
             deployment::{Deployment, ServerType},
         },
+        registry::Registry,
         runner,
     },
 };
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Setup => commands::setup::run()?,
         Commands::Build => {
+            let config_path = std::env::current_dir()?.join("jd.json");
             let config = JdConfig::load()?;
             let deployment = Deployment::new(
                 config.name,
@@ -35,6 +37,9 @@ fn main() -> Result<()> {
                 ServerType::Local,
             )?;
             runner::build(&deployment)?;
+            let mut registry = Registry::load()?;
+            registry.mark_built(&config_path);
+            registry.save()?;
         }
     }
 
