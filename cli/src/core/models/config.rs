@@ -16,6 +16,10 @@ pub struct JdConfig {
     pub deployment_type: DeploymentType,
     pub file_path: PathBuf,
     pub server: ServerType,
+    /// Arbitrary args appended to docker run / docker compose up at deploy time.
+    /// Each entry is a single token e.g. ["-p", "8000:8000", "--restart", "unless-stopped"]
+    #[serde(default)]
+    pub deployment_args: Vec<String>,
 }
 
 impl JdConfig {
