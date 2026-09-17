@@ -12,6 +12,7 @@ pub struct RegistryEntry {
     pub config_path: PathBuf,
     pub registered_at: DateTime<Utc>,
     pub last_built_at: Option<DateTime<Utc>>,
+    pub last_deployed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -54,7 +55,19 @@ impl Registry {
                 config_path,
                 registered_at: Utc::now(),
                 last_built_at: None,
+                last_deployed_at: None,
             });
+        }
+    }
+
+    /// Update the last_deployed_at timestamp for a tracked entry.
+    pub fn mark_deployed(&mut self, config_path: &PathBuf) {
+        if let Some(entry) = self
+            .deployments
+            .iter_mut()
+            .find(|e| &e.config_path == config_path)
+        {
+            entry.last_deployed_at = Some(Utc::now());
         }
     }
 
