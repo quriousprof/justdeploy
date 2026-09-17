@@ -57,6 +57,114 @@ fn build_dockerfile(deployment: &Deployment) -> Result<()> {
     Ok(())
 }
 
+/// Build and run the deployment in detached mode
+pub fn deploy(deployment: &Deployment) -> Result<()> {
+    logger::info(&format!("Deploying '{}'...", deployment.name));
+
+    match &deployment.deployment_type {
+        DeploymentType::Dockerfile => deploy_dockerfile(deployment),
+        DeploymentType::DockerCompose => deploy_compose(deployment),
+    }
+}
+
+fn deploy_dockerfile(deployment: &Deployment) -> Result<()> {
+    build_dockerfile(deployment)?;
+
+    // Stop and remove existing container if running
+    Command::new("docker")
+        .args(["rm", "-f", &deployment.name])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .ok();
+
+    let status = Command::new("docker")
+        .args(["run", "-d", "--name", &deployment.name, &deployment.name])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker run'")?
+        .wait()
+        .context("Failed to wait for 'docker run' process")?;
+
+    if !status.success() {
+        bail!(
+            "docker run failed (exit code: {})",
+            status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
+        );
+    }
+
+    logger::success(&format!("'{}' is running.", deployment.name));
+    Ok(())
+}
+
+fn deploy_compose(deployment: &Deployment) -> Result<()> {
+    let file_str = deployment
+        .file_path
+        .to_str()
+        .context("Compose file path contains invalid UTF-8")?;
+
+    let status = Command::new("docker")
+        .args([
+            "compose", "-f", file_str, "-p", &deployment.name, "up", "--build", "-d",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker compose up'")?
+        .wait()
+        .context("Failed to wait for 'docker compose up' process")?;
+
+    if !status.success() {
+        bail!(
+            "docker compose up failed (exit code: {})",
+            status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
+        );
+    }
+
+    logger::success(&format!("'{}' is running.", deployment.name));
+    Ok(())
+}
+
+/// Stream logs for a running deployment
+pub fn logs(deployment: &Deployment) -> Result<()> {
+    match &deployment.deployment_type {
+        DeploymentType::Dockerfile => logs_dockerfile(deployment),
+        DeploymentType::DockerCompose => logs_compose(deployment),
+    }
+}
+
+fn logs_dockerfile(deployment: &Deployment) -> Result<()> {
+    Command::new("docker")
+        .args(["logs", "-f", &deployment.name])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker logs'")?
+        .wait()
+        .context("Failed to wait for 'docker logs'")?;
+    Ok(())
+}
+
+fn logs_compose(deployment: &Deployment) -> Result<()> {
+    let file_str = deployment
+        .file_path
+        .to_str()
+        .context("Compose file path contains invalid UTF-8")?;
+
+    Command::new("docker")
+        .args([
+            "compose", "-f", file_str, "-p", &deployment.name, "logs", "-f",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker compose logs'")?
+        .wait()
+        .context("Failed to wait for 'docker compose logs'")?;
+    Ok(())
+}
+
 fn build_compose(deployment: &Deployment) -> Result<()> {
     let file_str = deployment
         .file_path
