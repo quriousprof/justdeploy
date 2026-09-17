@@ -22,12 +22,15 @@ impl JdConfig {
     pub fn load() -> Result<Self> {
         let path = PathBuf::from(CONFIG_FILE);
         if !path.exists() {
-            bail!(
-                "No configuration file found for this project. Run `jd setup` first."
-            );
+            bail!("No configuration file found for this project. Run `jd setup` first.");
         }
-        let contents = fs::read_to_string(&path)
-            .context("Failed to read jd.json")?;
-        serde_json::from_str(&contents).context("Failed to parse jd.json")
+        Self::load_from(&path)
+    }
+
+    pub fn load_from(path: &PathBuf) -> Result<Self> {
+        let contents = fs::read_to_string(path)
+            .with_context(|| format!("Failed to read '{}'", path.display()))?;
+        serde_json::from_str(&contents)
+            .with_context(|| format!("Failed to parse '{}'", path.display()))
     }
 }
