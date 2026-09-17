@@ -15,7 +15,11 @@ pub enum Commands {
     /// Build the deployment using the project's jd.json config
     Build,
     /// Build and run the deployment on the local machine
-    Deploy,
+    Deploy {
+        /// Stop and remove the running containers
+        #[arg(long)]
+        down: bool,
+    },
     /// Stream logs for a deployment by name, or for the current directory's project
     Logs {
         /// Name of the deployment (defaults to current directory's jd.json)

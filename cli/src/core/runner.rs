@@ -156,6 +156,63 @@ fn deploy_compose(deployment: &Deployment) -> Result<()> {
     Ok(())
 }
 
+/// Stop and remove the running deployment
+pub fn stop(deployment: &Deployment) -> Result<()> {
+    logger::info(&format!("Stopping '{}'...", deployment.name));
+
+    match &deployment.deployment_type {
+        DeploymentType::Dockerfile => stop_dockerfile(deployment),
+        DeploymentType::DockerCompose => stop_compose(deployment),
+    }
+}
+
+fn stop_dockerfile(deployment: &Deployment) -> Result<()> {
+    let status = Command::new("docker")
+        .args(["rm", "-f", &deployment.name])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker rm'")?
+        .wait()
+        .context("Failed to wait for 'docker rm'")?;
+
+    if !status.success() {
+        bail!(
+            "docker rm failed (exit code: {})",
+            status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
+        );
+    }
+
+    logger::success(&format!("'{}' stopped.", deployment.name));
+    Ok(())
+}
+
+fn stop_compose(deployment: &Deployment) -> Result<()> {
+    let file_str = deployment
+        .file_path
+        .to_str()
+        .context("Compose file path contains invalid UTF-8")?;
+
+    let status = Command::new("docker")
+        .args(["compose", "-f", file_str, "-p", &deployment.name, "down"])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("Failed to spawn 'docker compose down'")?
+        .wait()
+        .context("Failed to wait for 'docker compose down'")?;
+
+    if !status.success() {
+        bail!(
+            "docker compose down failed (exit code: {})",
+            status.code().map_or_else(|| "unknown".to_string(), |c| c.to_string())
+        );
+    }
+
+    logger::success(&format!("'{}' stopped.", deployment.name));
+    Ok(())
+}
+
 /// Stream logs for a running deployment
 pub fn logs(deployment: &Deployment) -> Result<()> {
     match &deployment.deployment_type {

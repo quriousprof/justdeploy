@@ -11,7 +11,7 @@ use crate::core::{
     runner,
 };
 
-pub fn run() -> Result<()> {
+pub fn run(down: bool) -> Result<()> {
     let config_path = env::current_dir()?.join("jd.json");
     let config = JdConfig::load()?;
 
@@ -22,11 +22,14 @@ pub fn run() -> Result<()> {
         ServerType::Local,
     )?;
 
-    runner::deploy(&deployment)?;
-
-    let mut registry = Registry::load()?;
-    registry.mark_deployed(&config_path);
-    registry.save()?;
+    if down {
+        runner::stop(&deployment)?;
+    } else {
+        runner::deploy(&deployment)?;
+        let mut registry = Registry::load()?;
+        registry.mark_deployed(&config_path);
+        registry.save()?;
+    }
 
     Ok(())
 }
