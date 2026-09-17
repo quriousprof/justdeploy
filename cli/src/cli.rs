@@ -14,6 +14,13 @@ pub enum Commands {
     Setup,
     /// Build the deployment using the project's jd.json config
     Build,
+    /// Build and run the deployment on the local machine
+    Deploy,
+    /// Stream logs for a deployment by name
+    Logs {
+        /// Name of the deployment (as set in jd.json)
+        name: String,
+    },
     /// List all registered deployments
     List,
 }

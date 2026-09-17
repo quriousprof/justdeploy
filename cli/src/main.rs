@@ -27,6 +27,8 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Setup => commands::setup::run()?,
+        Commands::Deploy => commands::deploy::run()?,
+        Commands::Logs { name } => commands::logs::run(&name)?,
         Commands::List => commands::list::run()?,
         Commands::Build => {
             let config_path = std::env::current_dir()?.join("jd.json");

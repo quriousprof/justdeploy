@@ -22,16 +22,17 @@ pub fn run() -> anyhow::Result<()> {
                     DeploymentType::Dockerfile => "Dockerfile",
                     DeploymentType::DockerCompose => "Docker Compose",
                 };
-                let built = entry
-                    .last_built_at
-                    .map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string())
-                    .unwrap_or_else(|| "never".to_string());
+                let fmt = |t: Option<chrono::DateTime<chrono::Utc>>| {
+                    t.map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string())
+                        .unwrap_or_else(|| "never".to_string())
+                };
 
                 println!("  {} {}", "▸".cyan().bold(), config.name.bold());
-                println!("    project   {}", config.project_dir.display());
-                println!("    type      {}", kind);
-                println!("    config    {}", entry.config_path.display());
-                println!("    built     {}", built);
+                println!("    project    {}", config.project_dir.display());
+                println!("    type       {}", kind);
+                println!("    config     {}", entry.config_path.display());
+                println!("    built      {}", fmt(entry.last_built_at));
+                println!("    deployed   {}", fmt(entry.last_deployed_at));
                 println!();
             }
             Err(_) => {
