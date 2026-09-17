@@ -16,10 +16,10 @@ pub enum Commands {
     Build,
     /// Build and run the deployment on the local machine
     Deploy,
-    /// Stream logs for a deployment by name
+    /// Stream logs for a deployment by name, or for the current directory's project
     Logs {
-        /// Name of the deployment (as set in jd.json)
-        name: String,
+        /// Name of the deployment (defaults to current directory's jd.json)
+        name: Option<String>,
     },
     /// List all registered deployments
     List,

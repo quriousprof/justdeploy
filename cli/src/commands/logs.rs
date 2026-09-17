@@ -1,3 +1,5 @@
+use std::env;
+
 use anyhow::{bail, Result};
 
 use crate::core::{
@@ -9,19 +11,31 @@ use crate::core::{
     runner,
 };
 
-pub fn run(name: &str) -> Result<()> {
+pub fn run(name: Option<&str>) -> Result<()> {
+    let deployment = match name {
+        Some(name) => find_by_name(name)?,
+        None => from_current_dir()?,
+    };
+    runner::logs(&deployment)
+}
+
+fn from_current_dir() -> Result<Deployment> {
+    let config = JdConfig::load()?;
+    Deployment::new(config.name, config.file_path, String::new(), ServerType::Local)
+}
+
+fn find_by_name(name: &str) -> Result<Deployment> {
     let registry = Registry::load()?;
 
     for entry in &registry.deployments {
         match JdConfig::load_from(&entry.config_path) {
             Ok(config) if config.name == name => {
-                let deployment = Deployment::new(
+                return Deployment::new(
                     config.name,
                     config.file_path,
                     String::new(),
                     ServerType::Local,
-                )?;
-                return runner::logs(&deployment);
+                );
             }
             _ => continue,
         }
